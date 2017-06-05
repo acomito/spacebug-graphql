@@ -10,9 +10,10 @@ type Geometry {
 	    type: String!
 	    coordinates: [Int]
 	}
-
 scalar Date
-
+type Count { 
+  count: Int
+}
 input LocationData {
 	street1: String
 	street2: String
@@ -22,25 +23,27 @@ input LocationData {
 	state: String
 	suburb: String
 }
-
 input ImageObject {
 	fileType: String
 	name: String
 	uid: String
 	url: String
+	_id: ID
+	parentModelType: String
 }
-
 type Address {
 	    fullAddress: String!
 	    lat: String
 	    lng: String
 	    geometry: Geometry
 	    placeId: String
-	    street: String
+	    street1: String
+		street2: String
 	    city: String
 	    state: String
-	    zip: Int
-	    country: Int
+	    postal: String
+	    suburb: String
+	    country: String
 	    maps_url: String
 	}
 `];

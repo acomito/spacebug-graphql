@@ -5,8 +5,8 @@ import gql from 'graphql-tag';
 // USER QUERIES
 // ====================================
 export const GET_USERS_ADMIN = gql`
-  query getUsersAdmin {
-    usersAdmin {
+  query getUsersAdmin ($params: UserSearchParams) {
+    usersAdmin (params: $params) {
       emails { address, verified },
       roles,
       profile {

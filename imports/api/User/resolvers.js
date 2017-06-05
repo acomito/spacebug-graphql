@@ -2,25 +2,68 @@ import { Random } from 'meteor/random';
 import { SchemaMutations, SchemaTypes, userId } from 'meteor-apollo-accounts';
 import { Meteor } from 'meteor/meteor';
 import { check } from 'meteor/check';
+import { Invites } from '../Invite';
 import { createError, isInstance } from 'apollo-errors';
 import { isAuthenticatedResolver, isAdminResolver } from '../base-resolvers';
 import { addInvitation } from '../api-helpers';
 
 
 
+const buildUsersSearchQuery = async (root, args, context) => {
+  
+  return new Promise(
+      (resolve, reject) => {
+        let query = {};
+        let andQueryArray = [];
+
+        let options = { sort: { createdAt: -1}  } // at some point, when pagination is added, you'll want to add a limit here, e.g. limit: 10,
+
+        // If an offset arguement is passed, add it as an option. 
+        // offset is (one potential strategy) used for pagination/infinite loading if it ever gets added.
+        // see: https://dev-blog.apollodata.com/pagination-and-infinite-scrolling-in-apollo-client-59ff064aac61
+        // see: http://dev.apollodata.com/react/pagination.html
+        if (args && args.params && args.params.offset) { options.skip = args.params.offset }
+      // IF NO ARGS EXIST, JUST RETURN BASIC QUERY
+      // ====================================
+      // if no arguments were passed, just return all messages using the above query and options variables
+      if (!args || !args.params) {
+        let count = Meteor.users.find(query).count()
+        let users = Meteor.users.find(query, options).fetch();
+        users.count = count
+        return resolve(users)
+      }
+      
+      // declare a unitIds variable. users do not have a buildingId, so we have to query the units in a building
+      // make an array of unitIds, then concat that with any other _ids coming from the client (which is 'args.params.unitIds' )
+
+
+      // TEXT SEARCH QUERY
+      // ====================================
+      // If a search string was passed, then add search terms to the andQueryArray
+      if (args && args.params && args.params.searchText) {
+        let regex = new RegExp( args.params.searchText, 'i' );
+        let orSearchQuery = { $or: [ 
+          { 'profile.firstName': regex }, 
+          { 'profile.lastName': regex }, 
+        ]};
+        andQueryArray.push(orSearchQuery)
+      }
+      if (andQueryArray && andQueryArray.length > 0) {
+        query = { $and: andQueryArray }
+      }
+      
+      let count = Meteor.users.find(query).count();
+      resolve({ query, options, count });
+
+      }
+  )
+};
+
 const buildUser = (params) => {
   let userToInsert = {
       emails:[ {address: params.email.toLowerCase(), verified: false }],
       roles: params.roles || [],
       profile: {
-/*        firstName: params.firstName || '',
-        lastName: params.lastName || '',
-        workPhone: params.workPhone || null,
-        cellPhone: params.cellPhone || null,
-        image: params.image || null,
-        groupId: params.groupId || null,
-        unitId: params.unitId || null,
-        userModelType: params.userModelType || null,*/
         ...params,
         userModelType: params.userModelType || null
       }
@@ -66,6 +109,9 @@ const adminSaveUserProfile = isAdminResolver.createResolver(
 const users = isAuthenticatedResolver.createResolver(
   async (root, args, { user }) => {
     let query = {};
+      if (!user.roles.includes('admin')) {
+        query = { 'profile.groupId': user.profile.groupId }
+      }
       return Meteor.users.find(query).fetch();
   }
 )
@@ -73,6 +119,9 @@ const users = isAuthenticatedResolver.createResolver(
 const getUserById = isAuthenticatedResolver.createResolver(
   async (root, { _id }, { user }) => {
     let query = {};
+    if (!user.roles.includes('admin')) {
+      query = { 'profile.groupId': user.profile.groupId }
+    }
     query._id = user.profile.groupId;
     return Meteor.users.findOne(query);
   }
@@ -94,8 +143,15 @@ export const UserResolvers = {
     user(root, args, context) {
       return context.user;
     },
-    usersAdmin(root, args, context) {
-      return Meteor.users.find().fetch();
+    usersCount: async (root, args, context) => {
+      //builds a query to grab users, returns the query, mongo query optios object, and the count of the query
+      let { query, options, count } = await buildUsersSearchQuery(root, args, context)
+      return count;
+    },
+    usersAdmin: async (root, args, context) => {
+      //builds a query to grab users, returns the query, mongo query optios object, and the count of the query
+      let { query, options, count } = await buildUsersSearchQuery(root, args, context); 
+      return Meteor.users.find(query, options).fetch();
     },
     getUserByIdAdmin(root, { _id }, context) {
       return Meteor.users.findOne({ _id });
@@ -112,9 +168,11 @@ export const UserResolvers = {
         'profile.firstName': params.firstName,
         'profile.lastName': params.lastName,
         'profile.cellPhone': params.cellPhone,
-        'profile.workPhone': params.workPhone, 
+        'profile.workPhone': params.workPhone,
       }
-
+      if (context.user.roles.includes('admin')) {
+        dataToUpdate = { ...dataToUpdate, roles: params.roles, 'profile.groupId': params.groupId }
+      }
       Meteor.users.update({ _id }, { $set: dataToUpdate });
       return Meteor.users.findOne({ _id });
     },
@@ -131,3 +189,4 @@ export const UserResolvers = {
     roles: ({ roles }) => roles,
   },
 };
+

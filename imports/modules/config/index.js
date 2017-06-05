@@ -13,3 +13,13 @@ export const PRODUCTION_URL = 'https://buysellloan.meteorapp.com';
 
 export const DEFAULT_AVATAR = '/avatar.png';
 
+export const ROLE_OPTIONS = [
+	'admin',
+	'u1'
+];
+
+export const USER_MODEL_TYPES = [
+	'admin',
+	'u1'
+];
+

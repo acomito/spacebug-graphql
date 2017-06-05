@@ -84,10 +84,10 @@ class UserForm extends React.Component {
 
   }
   render(){
-    const { form, groupsData, updateForm, user } = this.props;
+    const { form, updateForm, user } = this.props;
     const { getFieldDecorator } = form;
 
-    if (groupsData.loading) { return null }
+    //if (groupsData.loading) { return null }
 
     return (
       <Card style={{width: 450, margin: 'auto'}}>

@@ -17,7 +17,7 @@ const afterLogin = (userId, apollo, _this) => {
   }*/
 }
 
-const alertErrors = (res, _this) => {
+export const alertErrors = (res, _this) => {
   const errors = res.graphQLErrors.map( err => err.message );
   errors.forEach(messageText => {
     message.error(messageText, 4);

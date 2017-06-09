@@ -12,68 +12,80 @@ import message from 'antd/lib/message';
 import notification from 'antd/lib/notification';
 //modules
 import { handlePasswordChange } from '/imports/modules/helpers';
-import { changePassword } from 'meteor-apollo-accounts'
-import ApolloClient from '/imports/ui/apollo/ApolloClient'
-
-
+import { FormErrorArea } from './FormErrorArea'
+//
+import { Accounts } from 'meteor/accounts-base'
+// CONSTANTS & DESTRUCTURING
+// ================================
 const FormItem = Form.Item;
 
-  const styles = {
-    cardStyles: {
-      "width": 400,
-      "margin": "auto",
-      "marginTop": "40px",
-      "padding": "20px",
-    },
-    textField: {
-      display: "block",
-      width: "70%",
-      margin: "auto",
-      background: "#ffffff",
-      backgroundColor: "#ffffff",
-      marginBottom: "20px",
-    },
-  };
+
+// STYLES
+// ================================
+const styles = {
+  cardStyles: {
+    "width": 400,
+    "margin": "auto",
+    "marginTop": "40px",
+    "padding": "20px",
+  },
+  textField: {
+    display: "block",
+    width: "70%",
+    margin: "auto",
+    background: "#ffffff",
+    backgroundColor: "#ffffff",
+    marginBottom: "20px",
+  },
+};
 
 
-
-export const ChangePassword = Form.create()(React.createClass({
-  getInitialState () {
-    return {
+// EXPORTED COMPONENT
+// ================================
+ class FormComponent extends React.Component {
+  constructor(props){
+    super(props);
+    this.state = {
       loading: false,
       errors: []
-    };
-  },
-  handleSubmit(e) {
+    }
+  }
+  handleSubmit = (e) => {
     e.preventDefault();
-    let errors = [];
-    this.setState({loading: true, errors});
+    this.setState({loading: true});
+
+    const failure = () => {
+      this.setState({loading: false});
+    }
+    const success = () => {
+      this.setState({loading: false});
+      
+    }
 
     this.props.form.validateFields((err, values) => {
-      if (err) { failure(); return; }
+      if (err) { return failure(); }
 
       if (!err) {
         let { oldPassword, newPassword } = values;
-        changePassword({oldPassword, newPassword}, ApolloClient).then(item => {
-          message.success('password changed!')
-          this.props.form.resetFields();
-          return this.setState({loading: false});
-        })
-        .catch(e => {
-          return this.setState({loading: false});
-        })
+        Accounts.changePassword(oldPassword, newPassword, (err, res) => {
+          if(err) { return console.log(err); }
+          message.success('password changed!', 3);
+          this.setState({loading: false});
+          return this.props.form.resetFields();
+        });
+        //handlePasswordChange(oldPassword, newPassword, this);
       }
     });
 
-  },
-  checkPassword(rule, value, callback) {
+  }
+  checkPassword = (rule, value, callback) => {
     const form = this.props.form;
     if (value && value !== form.getFieldValue('newPassword')) {
       callback('Your passwords that you entered are inconsistent!');
     } else {
       callback();
     }
-  },
+  }
   render() {
     const { getFieldDecorator } = this.props.form;
     return (
@@ -120,7 +132,13 @@ export const ChangePassword = Form.create()(React.createClass({
       </Col> 
       </Row>
       </Form>
+      <FormErrorArea errors={this.state.errors} />
       </Card>
     );
-  },
-}));
+  }
+ }
+
+
+let ChangePassword = Form.create()(FormComponent)
+
+ export { ChangePassword }
